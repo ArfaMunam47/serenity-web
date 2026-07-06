@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Serenity — A quieter place on the internet</title>
+<meta name="description" content="Serenity is a calming space to breathe, listen, and slow down — ambient soundscapes, guided breathing, and mindful moments.">
+
+<!-- Typography: Fraunces for warmth & character, Inter for calm clarity -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Ambient background particles, purely decorative -->
+<canvas id="particle-canvas" aria-hidden="true"></canvas>
+
+<!-- Skip link for keyboard / screen reader users -->
+<a class="skip-link" href="#main">Skip to content</a>
+
+<!-- ============ NAVIGATION ============ -->
+<header class="navbar" id="navbar">
+  <div class="navbar__inner">
+    <a href="#home" class="navbar__logo">
+      <span class="navbar__logo-mark" aria-hidden="true"></span>
+      Serenity
+    </a>
+
+    <nav class="navbar__links" id="navLinks" aria-label="Primary">
+      <a href="#home">Home</a>
+      <a href="#sounds">Sounds</a>
+      <a href="#meditation">Meditation</a>
+      <a href="#nature">Nature</a>
+      <a href="#about">About</a>
+    </nav>
+
+    <div class="navbar__actions">
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode" aria-pressed="false">
+        <svg class="icon icon-sun" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="1.6"/><path stroke="currentColor" stroke-width="1.6" stroke-linecap="round" d="M12 2.5v2M12 19.5v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2.5 12h2M19.5 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
+        <svg class="icon icon-moon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" d="M20 14.2A8.3 8.3 0 1 1 9.8 4a6.7 6.7 0 0 0 10.2 10.2Z"/></svg>
+      </button>
+      <button class="navbar__burger" id="burgerBtn" aria-label="Open menu" aria-expanded="false" aria-controls="navLinks">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- ============ HERO ============ -->
+  <section class="hero" id="home">
+    <div class="hero__aurora" aria-hidden="true"></div>
+
+    <div class="hero__floaters" aria-hidden="true">
+      <span class="floater floater--1"></span>
+      <span class="floater floater--2"></span>
+      <span class="floater floater--3"></span>
+      <span class="floater floater--4"></span>
+    </div>
+
+    <p class="eyebrow reveal">A quieter corner of the internet</p>
+    <h1 class="hero__title reveal">Take a<br><em>deep breath.</em></h1>
+    <p class="hero__subtitle reveal">Escape the noise. Relax your mind with peaceful sounds, gentle guidance, and mindful moments made just for slowing down.</p>
+
+    <div class="hero__cta reveal">
+      <a href="#breathe" class="btn btn--primary">Start relaxing</a>
+      <a href="#sounds" class="btn btn--ghost">Explore sounds</a>
+    </div>
+
+    <a class="hero__scroll-cue" href="#breathe" aria-label="Scroll to breathing exercise">
+      <span></span>
+    </a>
+  </section>
+
+  <!-- ============ BREATHING CIRCLE ============ -->
+  <section class="section breathe" id="breathe" aria-labelledby="breatheTitle">
+    <p class="eyebrow reveal">The centerpiece</p>
+    <h2 id="breatheTitle" class="section__title reveal">One breath at a time</h2>
+    <p class="section__subtitle reveal">Follow the orb. Let it lead your breath — four seconds in, four to hold, six to release.</p>
+
+    <div class="breathe__stage reveal">
+      <div class="breathe__orb-wrap">
+        <div class="breathe__glow" aria-hidden="true"></div>
+        <button class="breathe__orb" id="breatheOrb" aria-label="Start breathing exercise">
+          <span class="breathe__ring" aria-hidden="true"></span>
+          <span class="breathe__core" aria-hidden="true"></span>
+          <span class="breathe__label" id="breatheLabel">Begin</span>
+          <span class="breathe__count" id="breatheCount" aria-hidden="true"></span>
+        </button>
+      </div>
+
+      <div class="breathe__controls">
+        <p class="breathe__timer" id="breatheTimer" aria-live="polite">00:00</p>
+        <div class="breathe__buttons">
+          <button class="btn btn--soft" id="breatheToggle">Begin session</button>
+          <button class="btn btn--text" id="breatheReset">Reset</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SOUND LIBRARY ============ -->
+  <section class="section sounds" id="sounds" aria-labelledby="soundsTitle">
+    <p class="eyebrow reveal">Soundscapes</p>
+    <h2 id="soundsTitle" class="section__title reveal">Sounds to disappear into</h2>
+    <p class="section__subtitle reveal">Every tone here is generated live in your browser — soft, seamless, endless. Press play on one; it gently replaces whatever came before.</p>
+
+    <div class="sound-grid" id="soundGrid" role="list">
+      <!-- Sound cards injected identically in markup for accessibility & no-JS fallback -->
+    </div>
+  </section>
+
+  <!-- ============ AMBIENT MOOD MIXER ============ -->
+  <section class="section mixer" id="mixer" aria-labelledby="mixerTitle">
+    <p class="eyebrow reveal">Ambient mixer</p>
+    <h2 id="mixerTitle" class="section__title reveal">Blend your own atmosphere</h2>
+    <p class="section__subtitle reveal">Layer natural textures together — a little rain, a distant fire, birdsong at dusk.</p>
+
+    <div class="mixer__grid reveal" id="mixerGrid" role="list">
+      <!-- Mixer toggles injected by script.js -->
+    </div>
+  </section>
+
+  <!-- ============ FOCUS TIMER ============ -->
+  <section class="section focus" id="meditation" aria-labelledby="focusTitle">
+    <p class="eyebrow reveal">Focus timer</p>
+    <h2 id="focusTitle" class="section__title reveal">Give yourself a still moment</h2>
+    <p class="section__subtitle reveal">Choose a length, press start, and let the world wait.</p>
+
+    <div class="focus__card reveal">
+      <div class="focus__ring-wrap">
+        <svg class="focus__ring" viewBox="0 0 220 220" aria-hidden="true">
+          <circle class="focus__ring-track" cx="110" cy="110" r="98"/>
+          <circle class="focus__ring-progress" id="focusRingProgress" cx="110" cy="110" r="98"/>
+        </svg>
+        <div class="focus__display">
+          <span class="focus__time" id="focusTime" aria-live="polite">05:00</span>
+          <span class="focus__state" id="focusState">ready</span>
+        </div>
+      </div>
+
+      <div class="focus__presets" role="group" aria-label="Timer length">
+        <button class="chip" data-minutes="5" aria-pressed="true">5 min</button>
+        <button class="chip" data-minutes="10" aria-pressed="false">10 min</button>
+        <button class="chip" data-minutes="20" aria-pressed="false">20 min</button>
+        <button class="chip" data-minutes="30" aria-pressed="false">30 min</button>
+      </div>
+
+      <div class="focus__buttons">
+        <button class="btn btn--soft" id="focusStart">Start</button>
+        <button class="btn btn--ghost" id="focusPause" disabled>Pause</button>
+        <button class="btn btn--text" id="focusReset">Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ QUOTE GENERATOR ============ -->
+  <section class="section quote" aria-labelledby="quoteTitle">
+    <p class="eyebrow reveal">A gentle reminder</p>
+    <h2 id="quoteTitle" class="visually-hidden">Calming quote</h2>
+    <div class="quote__card reveal">
+      <svg class="quote__mark" viewBox="0 0 32 24" aria-hidden="true"><path d="M9.6 0C4.2 2.9 0 8.6 0 14.8 0 20 3.6 24 8.6 24c4 0 7-3 7-7 0-3.7-2.7-6.6-6.2-6.6-.6 0-1 .05-1.4.15C8.7 6.4 11.4 3 15 1.1L9.6 0Zm17 0C21.2 2.9 17 8.6 17 14.8 17 20 20.6 24 25.6 24c4 0 7-3 7-7 0-3.7-2.7-6.6-6.2-6.6-.6 0-1 .05-1.4.15C25.7 6.4 28.4 3 32 1.1L26.6 0Z" fill="currentColor"/></svg>
+      <p class="quote__text" id="quoteText">Peace is not the absence of noise, but the presence of stillness within it.</p>
+      <p class="quote__author" id="quoteAuthor">— Serenity</p>
+      <button class="btn btn--soft" id="quoteBtn">New quote</button>
+    </div>
+  </section>
+
+  <!-- ============ DAILY MOOD CHECK ============ -->
+  <section class="section mood" aria-labelledby="moodTitle">
+    <div class="mood__card reveal">
+      <h2 id="moodTitle" class="section__title section__title--sm">How do you feel today?</h2>
+      <div class="mood__options" id="moodOptions" role="group" aria-label="Select your mood">
+        <button class="mood__btn" data-mood="Joyful" aria-label="Joyful">🙂</button>
+        <button class="mood__btn" data-mood="Calm" aria-label="Calm">😌</button>
+        <button class="mood__btn" data-mood="Tired" aria-label="Tired">😴</button>
+        <button class="mood__btn" data-mood="Anxious" aria-label="Anxious">😟</button>
+        <button class="mood__btn" data-mood="Sad" aria-label="Sad">😔</button>
+      </div>
+      <p class="mood__response" id="moodResponse" aria-live="polite"></p>
+    </div>
+  </section>
+
+  <!-- ============ NATURE GALLERY ============ -->
+  <section class="section nature" id="nature" aria-labelledby="natureTitle">
+    <p class="eyebrow reveal">Nature gallery</p>
+    <h2 id="natureTitle" class="section__title reveal">Somewhere far away</h2>
+    <p class="section__subtitle reveal">Six quiet places, rendered in light.</p>
+
+    <div class="nature-grid" id="natureGrid">
+      <!-- Nature cards injected by script.js -->
+    </div>
+  </section>
+
+  <!-- ============ MINI ZEN GARDEN ============ -->
+  <section class="section zen" id="about" aria-labelledby="zenTitle">
+    <p class="eyebrow reveal">A small sandbox</p>
+    <h2 id="zenTitle" class="section__title reveal">Your mini zen garden</h2>
+    <p class="section__subtitle reveal">Move your cursor across the sand. Everything responds, nothing is urgent.</p>
+
+    <div class="zen__frame reveal">
+      <canvas id="zenCanvas" role="img" aria-label="Interactive zen garden — move your mouse to disturb the sand and leaves"></canvas>
+      <p class="zen__hint">hover · tap · drift</p>
+    </div>
+  </section>
+
+  <!-- ============ ABOUT / CLOSING ============ -->
+  <section class="section closing reveal" aria-label="Closing thought">
+    <p class="closing__text">Serenity was built on the idea that the internet can slow down, too.</p>
+  </section>
+
+</main>
+
+<!-- ============ FOOTER ============ -->
+<footer class="footer">
+  <div class="footer__inner">
+    <div class="footer__brand">
+      <span class="navbar__logo-mark" aria-hidden="true"></span>
+      <p>Serenity</p>
+    </div>
+    <p class="footer__tagline">Made for peaceful minds.</p>
+
+    <div class="footer__social" aria-label="Social links">
+      <a href="#" aria-label="Instagram">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.5"/><circle cx="17.2" cy="6.8" r="1" fill="currentColor"/></svg>
+      </a>
+      <a href="#" aria-label="Twitter">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6.5c-.6.3-1.3.5-2 .6a3.3 3.3 0 0 0 1.5-1.9c-.7.4-1.5.7-2.3.9a3.4 3.4 0 0 0-5.9 3.2A9.7 9.7 0 0 1 4.3 5.6a3.5 3.5 0 0 0 1.1 4.6c-.6 0-1.1-.2-1.6-.4v.1c0 1.7 1.2 3 2.8 3.4-.5.1-1 .1-1.5.1l-.4-.1c.4 1.4 1.7 2.4 3.2 2.5A6.9 6.9 0 0 1 3 17.2 9.7 9.7 0 0 0 8.3 19c6.3 0 9.8-5.3 9.8-9.9v-.5c.7-.5 1.3-1.1 1.9-1.9Z" fill="currentColor"/></svg>
+      </a>
+      <a href="#" aria-label="Pinterest">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5"/><path d="M9.5 17.5 12 7.3c2.6 0 4 1.2 4 3.2 0 2.4-1.4 4.3-3.5 4.3-.7 0-1.3-.3-1.7-.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </a>
+    </div>
+
+    <div class="footer__links">
+      <a href="#">Privacy</a>
+      <a href="#">Contact</a>
+    </div>
+  </div>
+  <p class="footer__copy">&copy; <span id="year"></span> Serenity. All quiet reserved.</p>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>
