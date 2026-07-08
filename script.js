@@ -284,14 +284,29 @@
     function start(name, initialVolume = 0.6) {
       const c = getContext();
       const output = c.createGain();
-      output.gain.value = initialVolume;
+      // Fade in smoothly rather than snapping straight to full volume —
+      // every layer should arrive like a breath, not a switch flipping.
+      output.gain.value = 0;
+      output.gain.linearRampToValueAtTime(clamp(initialVolume, 0, 1), c.currentTime + 0.9);
       output.connect(c.destination);
       const stopFn = builders[name] ? builders[name](c, output) : () => {};
+      let stopped = false;
       return {
-        setVolume(v) { output.gain.linearRampToValueAtTime(clamp(v, 0, 1), c.currentTime + 0.05); },
+        setVolume(v) {
+          output.gain.cancelScheduledValues(c.currentTime);
+          output.gain.linearRampToValueAtTime(clamp(v, 0, 1), c.currentTime + 0.25);
+        },
         stop() {
-          try { stopFn(); } catch (e) { /* already stopped */ }
-          output.disconnect();
+          if (stopped) return;
+          stopped = true;
+          // Fade out first, then release the nodes — avoids an audible click.
+          output.gain.cancelScheduledValues(c.currentTime);
+          output.gain.setValueAtTime(output.gain.value, c.currentTime);
+          output.gain.linearRampToValueAtTime(0, c.currentTime + 0.5);
+          setTimeout(() => {
+            try { stopFn(); } catch (e) { /* already stopped */ }
+            output.disconnect();
+          }, 550);
         },
       };
     }
@@ -313,6 +328,41 @@
     }
 
     return { start, playChime };
+  })();
+
+  /* ------------------------------------------------------------------------
+     MODULE: Mindful-minutes tracker
+     A quiet, local-only counter of time spent breathing or focusing today.
+     Nothing leaves the browser; it simply resets when the date changes.
+     ------------------------------------------------------------------------ */
+  const MindfulTracker = (() => {
+    const STORAGE_KEY = 'serenity-mindful';
+    const todayKey = () => new Date().toDateString();
+
+    function read() {
+      try {
+        const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+        if (raw && raw.date === todayKey()) return raw;
+      } catch (e) { /* ignore malformed storage */ }
+      return { date: todayKey(), seconds: 0 };
+    }
+
+    let state = read();
+    const badge = document.getElementById('mindfulBadge');
+
+    function render() {
+      const minutes = Math.floor(state.seconds / 60);
+      if (badge) badge.textContent = `${minutes} min of calm today`;
+    }
+
+    function addSecond() {
+      state.seconds += 1;
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* storage unavailable */ }
+      render();
+    }
+
+    render();
+    return { addSecond };
   })();
 
   /* ------------------------------------------------------------------------
@@ -400,13 +450,27 @@
     const toggleBtn = document.getElementById('breatheToggle');
     const resetBtn = document.getElementById('breatheReset');
 
-    const phases = [
-      { name: 'phase-in', text: 'Breathe in', duration: 4 },
-      { name: 'phase-hold', text: 'Hold', duration: 4 },
-      { name: 'phase-out', text: 'Breathe out', duration: 6 },
-      { name: 'phase-hold', text: 'Hold', duration: 2 },
-    ];
+    const PATTERNS = {
+      calm: [
+        { name: 'phase-in', text: 'Breathe in', duration: 4 },
+        { name: 'phase-hold', text: 'Hold', duration: 4 },
+        { name: 'phase-out', text: 'Breathe out', duration: 6 },
+        { name: 'phase-hold', text: 'Hold', duration: 2 },
+      ],
+      box: [
+        { name: 'phase-in', text: 'Breathe in', duration: 4 },
+        { name: 'phase-hold', text: 'Hold', duration: 4 },
+        { name: 'phase-out', text: 'Breathe out', duration: 4 },
+        { name: 'phase-hold', text: 'Hold', duration: 4 },
+      ],
+      '478': [
+        { name: 'phase-in', text: 'Breathe in', duration: 4 },
+        { name: 'phase-hold', text: 'Hold', duration: 7 },
+        { name: 'phase-out', text: 'Breathe out', duration: 8 },
+      ],
+    };
 
+    let phases = PATTERNS.calm;
     let running = false;
     let phaseIndex = 0;
     let phaseSecondsLeft = phases[0].duration;
@@ -427,6 +491,7 @@
       const mins = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
       const secs = String(totalSeconds % 60).padStart(2, '0');
       timerDisplay.textContent = `${mins}:${secs}`;
+      MindfulTracker.addSecond();
 
       if (phaseSecondsLeft <= 0) {
         phaseIndex = (phaseIndex + 1) % phases.length;
@@ -463,9 +528,22 @@
 
     function toggle() { running ? pause() : start(); }
 
+    function setPattern(key) {
+      phases = PATTERNS[key] || PATTERNS.calm;
+      reset();
+    }
+
     toggleBtn.addEventListener('click', toggle);
     orb.addEventListener('click', toggle);
     resetBtn.addEventListener('click', reset);
+
+    document.querySelectorAll('.breathe__patterns .chip').forEach((chip) => {
+      chip.addEventListener('click', () => {
+        document.querySelectorAll('.breathe__patterns .chip').forEach((c) => c.setAttribute('aria-pressed', 'false'));
+        chip.setAttribute('aria-pressed', 'true');
+        setPattern(chip.dataset.pattern);
+      });
+    });
   }
 
   /* ------------------------------------------------------------------------
@@ -578,7 +656,10 @@
 
   function initMixer() {
     const grid = document.getElementById('mixerGrid');
+    const masterSlider = document.getElementById('mixerMaster');
+    const BASE_VOLUME = 0.45;
     const controllers = {};
+    let master = (masterSlider ? Number(masterSlider.value) : 70) / 100;
 
     grid.innerHTML = MIXER_DEFS.map((def) => `
       <button class="mixer__toggle" data-key="${def.key}" role="listitem" aria-pressed="false">
@@ -595,13 +676,22 @@
         toggle.setAttribute('aria-pressed', String(isActive));
 
         if (isActive) {
-          controllers[key] = AudioEngine.start(key, 0.45);
+          controllers[key] = AudioEngine.start(key, BASE_VOLUME * master);
         } else if (controllers[key]) {
           controllers[key].stop();
           delete controllers[key];
         }
       });
     });
+
+    // One master fader scales every active layer together, so the whole
+    // blend rises and falls as a single, cohesive atmosphere.
+    if (masterSlider) {
+      masterSlider.addEventListener('input', () => {
+        master = Number(masterSlider.value) / 100;
+        Object.values(controllers).forEach((controller) => controller.setVolume(BASE_VOLUME * master));
+      });
+    }
   }
 
   /* ------------------------------------------------------------------------
@@ -616,12 +706,32 @@
     const pauseBtn = document.getElementById('focusPause');
     const resetBtn = document.getElementById('focusReset');
     const presetButtons = document.querySelectorAll('.focus__presets .chip');
+    const sessionsEl = document.getElementById('focusSessions');
 
     const CIRCUMFERENCE = 2 * Math.PI * 98;
     let totalSeconds = 5 * 60;
     let secondsLeft = totalSeconds;
     let intervalId = null;
     let running = false;
+
+    // Daily session count, persisted locally and reset on a new day.
+    const SESSIONS_KEY = 'serenity-focus-sessions';
+    function loadSessions() {
+      try {
+        const raw = JSON.parse(localStorage.getItem(SESSIONS_KEY) || 'null');
+        if (raw && raw.date === new Date().toDateString()) return raw.count;
+      } catch (e) { /* ignore malformed storage */ }
+      return 0;
+    }
+    let sessionCount = loadSessions();
+    function renderSessions() {
+      sessionsEl.textContent = `${sessionCount} session${sessionCount === 1 ? '' : 's'} completed today`;
+    }
+    function recordSession() {
+      sessionCount++;
+      try { localStorage.setItem(SESSIONS_KEY, JSON.stringify({ date: new Date().toDateString(), count: sessionCount })); } catch (e) { /* storage unavailable */ }
+      renderSessions();
+    }
 
     function render() {
       const mins = String(Math.floor(secondsLeft / 60)).padStart(2, '0');
@@ -642,6 +752,7 @@
     function tick() {
       secondsLeft--;
       render();
+      MindfulTracker.addSecond();
       if (secondsLeft <= 0) {
         complete();
       }
@@ -681,6 +792,7 @@
       card.classList.add('is-complete');
       startBtn.disabled = false;
       pauseBtn.disabled = true;
+      recordSession();
       try { AudioEngine.playChime(); } catch (e) { /* audio unavailable */ }
     }
 
@@ -698,6 +810,7 @@
     });
 
     render();
+    renderSessions();
   }
 
   /* ------------------------------------------------------------------------
@@ -984,6 +1097,67 @@
   }
 
   /* ------------------------------------------------------------------------
+     MODULE: Scroll progress hairline
+     ------------------------------------------------------------------------ */
+  function initScrollProgress() {
+    const bar = document.getElementById('scrollProgress');
+    if (!bar) return;
+    function update() {
+      const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+      const progress = scrollable > 0 ? (window.scrollY / scrollable) * 100 : 0;
+      bar.style.width = `${clamp(progress, 0, 100)}%`;
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    update();
+  }
+
+  /* ------------------------------------------------------------------------
+     MODULE: Cursor glow — a soft light that trails the pointer
+     ------------------------------------------------------------------------ */
+  function initCursorGlow() {
+    const glow = document.getElementById('cursorGlow');
+    if (!glow || prefersReducedMotion) return;
+    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+
+    let targetX = window.innerWidth / 2;
+    let targetY = window.innerHeight / 2;
+    let currentX = targetX;
+    let currentY = targetY;
+    let active = false;
+
+    window.addEventListener('mousemove', (e) => {
+      targetX = e.clientX;
+      targetY = e.clientY;
+      if (!active) { active = true; glow.classList.add('is-active'); }
+    });
+    document.addEventListener('mouseleave', () => { active = false; glow.classList.remove('is-active'); });
+
+    function loop() {
+      // Gentle lag gives the glow a soft, floating feel rather than snapping.
+      currentX += (targetX - currentX) * 0.12;
+      currentY += (targetY - currentY) * 0.12;
+      glow.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+  }
+
+  /* ------------------------------------------------------------------------
+     MODULE: Scroll-to-top
+     ------------------------------------------------------------------------ */
+  function initScrollTop() {
+    const btn = document.getElementById('scrollTopBtn');
+    if (!btn) return;
+    window.addEventListener('scroll', () => {
+      btn.classList.toggle('is-visible', window.scrollY > 600);
+    }, { passive: true });
+    btn.addEventListener('click', () => {
+      window.scrollTo({ top: 0, behavior: prefersReducedMotion ? 'auto' : 'smooth' });
+    });
+  }
+
+  /* ------------------------------------------------------------------------
      INIT
      ------------------------------------------------------------------------ */
   document.addEventListener('DOMContentLoaded', () => {
@@ -1001,5 +1175,8 @@
     initZenGarden();
     initParticles();
     initScrollReveal();
+    initScrollProgress();
+    initCursorGlow();
+    initScrollTop();
   });
 })();
