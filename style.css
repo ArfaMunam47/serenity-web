@@ -301,6 +301,8 @@ body{
 }
 .navbar__links a:hover{ color: var(--text); }
 .navbar__links a:hover::after{ width: 100%; }
+.navbar__links a.is-active{ color: var(--text); }
+.navbar__links a.is-active::after{ width: 100%; }
 
 .navbar__actions{ display: flex; align-items: center; gap: 10px; justify-self: end; }
 
@@ -358,7 +360,7 @@ body{
   100% { transform: translate(2%, -2%) scale(1.03); }
 }
 
-.hero__floaters{ position: absolute; inset: 0; z-index: -1; }
+.hero__floaters{ position: absolute; inset: 0; z-index: -1; transition: transform 0.2s var(--ease-out); will-change: transform; }
 .floater{
   position: absolute; border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.9), rgba(255,255,255,0) 70%), var(--accent-blue);
@@ -382,6 +384,16 @@ body{
   line-height: 1.05;
   letter-spacing: -0.02em;
   max-width: 16ch;
+}
+.hero__title .word{
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(32px);
+  filter: blur(6px);
+  animation: wordIn 1s var(--ease-out) forwards;
+}
+@keyframes wordIn{
+  to{ opacity: 1; transform: translateY(0); filter: blur(0); }
 }
 .hero__title em{
   font-style: italic; font-weight: 400;
@@ -901,6 +913,119 @@ body{
 .mixer__master input[type="range"]::-moz-range-thumb{
   width: 16px; height: 16px; border: none; border-radius: 50%;
   background: var(--gold-deep); cursor: pointer;
+}
+
+/* -------------------------------------------------------------------------
+   NOW PLAYING BAR (live audio visualizer)
+   ------------------------------------------------------------------------- */
+.now-playing{
+  position: fixed; left: 50%; bottom: 24px; z-index: 250;
+  transform: translate(-50%, 0);
+  display: flex; align-items: center; gap: 16px;
+  padding: 12px 18px 12px 14px;
+  min-width: 280px;
+  background: var(--surface);
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  box-shadow: var(--shadow-lg);
+  transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+.now-playing[hidden]{ display: none; }
+.now-playing.is-entering{ animation: nowPlayingIn 0.5s var(--ease-out); }
+@keyframes nowPlayingIn{
+  from{ opacity: 0; transform: translate(-50%, 16px); }
+  to{ opacity: 1; transform: translate(-50%, 0); }
+}
+.now-playing__viz{ width: 56px; height: 32px; border-radius: 8px; flex-shrink: 0; }
+.now-playing__info{ display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+.now-playing__eyebrow{ font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-faint); }
+.now-playing__title{ font-family: var(--font-display); font-size: 0.98rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+.now-playing__close{
+  width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--line);
+  color: var(--text-soft);
+  transition: background var(--dur-fast), color var(--dur-fast), transform var(--dur-fast) var(--ease-out);
+}
+.now-playing__close:hover{ background: var(--surface-solid); color: var(--text); transform: rotate(90deg); }
+.now-playing__close svg{ width: 13px; height: 13px; }
+
+/* -------------------------------------------------------------------------
+   TOAST NOTIFICATIONS
+   ------------------------------------------------------------------------- */
+.toast{
+  position: fixed; left: 50%; top: 96px; z-index: 260;
+  transform: translate(-50%, -14px);
+  padding: 14px 26px;
+  max-width: min(90vw, 380px);
+  text-align: center;
+  font-size: 0.9rem;
+  background: var(--surface);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  box-shadow: var(--shadow-md);
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transition: opacity var(--dur-med) var(--ease-out), transform var(--dur-med) var(--ease-out), visibility var(--dur-med);
+}
+.toast.is-visible{ opacity: 1; visibility: visible; transform: translate(-50%, 0); }
+
+/* -------------------------------------------------------------------------
+   NATURE LIGHTBOX
+   ------------------------------------------------------------------------- */
+.lightbox{
+  position: fixed; inset: 0; z-index: 500;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  background: rgba(20,18,14,0.6);
+  backdrop-filter: blur(10px);
+  opacity: 0;
+  transition: opacity var(--dur-med) var(--ease-out);
+}
+.lightbox[hidden]{ display: none; }
+.lightbox.is-visible{ opacity: 1; }
+
+.lightbox__panel{
+  position: relative;
+  width: min(880px, 100%);
+  border-radius: var(--r-xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  transform: scale(0.94);
+  transition: transform var(--dur-med) var(--ease-out);
+}
+.lightbox.is-visible .lightbox__panel{ transform: scale(1); }
+
+.lightbox__scene{
+  height: min(70vh, 560px);
+  animation: kenBurns 14s ease-in-out infinite alternate;
+}
+@keyframes kenBurns{
+  from{ transform: scale(1) translate(0, 0); }
+  to{ transform: scale(1.14) translate(-1.5%, 1.5%); }
+}
+
+.lightbox__caption{
+  position: absolute; left: 26px; bottom: 22px;
+  color: #fff; font-family: var(--font-display); font-style: italic; font-size: 1.3rem;
+  text-shadow: 0 2px 16px rgba(0,0,0,0.35);
+}
+.lightbox__close{
+  position: absolute; top: 18px; right: 18px; z-index: 2;
+  width: 40px; height: 40px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(20,18,14,0.4); color: #fff;
+  border: 1px solid rgba(255,255,255,0.25);
+  transition: transform var(--dur-fast) var(--ease-out), background var(--dur-fast);
+}
+.lightbox__close:hover{ background: rgba(20,18,14,0.65); transform: rotate(90deg); }
+.lightbox__close svg{ width: 16px; height: 16px; }
+.nature-card{ cursor: pointer; }
+
+@media (prefers-reduced-motion: reduce){
+  .lightbox__scene{ animation: none; }
 }
 
 /* -------------------------------------------------------------------------

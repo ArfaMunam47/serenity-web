@@ -288,10 +288,18 @@
       // every layer should arrive like a breath, not a switch flipping.
       output.gain.value = 0;
       output.gain.linearRampToValueAtTime(clamp(initialVolume, 0, 1), c.currentTime + 0.9);
-      output.connect(c.destination);
+
+      // An analyser sits between the sound and the speakers so the UI can
+      // draw a live waveform without affecting what's actually heard.
+      const analyser = c.createAnalyser();
+      analyser.fftSize = 128;
+      analyser.smoothingTimeConstant = 0.8;
+      output.connect(analyser).connect(c.destination);
+
       const stopFn = builders[name] ? builders[name](c, output) : () => {};
       let stopped = false;
       return {
+        analyser,
         setVolume(v) {
           output.gain.cancelScheduledValues(c.currentTime);
           output.gain.linearRampToValueAtTime(clamp(v, 0, 1), c.currentTime + 0.25);
@@ -306,6 +314,7 @@
           setTimeout(() => {
             try { stopFn(); } catch (e) { /* already stopped */ }
             output.disconnect();
+            analyser.disconnect();
           }, 550);
         },
       };
@@ -363,6 +372,94 @@
 
     render();
     return { addSecond };
+  })();
+
+  /* ------------------------------------------------------------------------
+     MODULE: Toast — brief, gentle notifications
+     ------------------------------------------------------------------------ */
+  const Toast = (() => {
+    const el = document.getElementById('toast');
+    let hideTimer = null;
+
+    function show(message, duration = 3600) {
+      if (!el) return;
+      clearTimeout(hideTimer);
+      el.textContent = message;
+      el.classList.add('is-visible');
+      hideTimer = setTimeout(() => el.classList.remove('is-visible'), duration);
+    }
+
+    return { show };
+  })();
+
+  /* ------------------------------------------------------------------------
+     MODULE: Now Playing bar — persistent player with a live visualizer
+     ------------------------------------------------------------------------ */
+  const NowPlayingBar = (() => {
+    const bar = document.getElementById('nowPlaying');
+    const titleEl = document.getElementById('nowPlayingTitle');
+    const canvas = document.getElementById('nowPlayingViz');
+    const closeBtn = document.getElementById('nowPlayingClose');
+    const ctx = canvas ? canvas.getContext('2d') : null;
+    let rafId = null;
+    let onStop = null;
+
+    function resizeCanvas() {
+      if (!canvas) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = 56 * dpr;
+      canvas.height = 32 * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function draw(analyser) {
+      if (!ctx) return;
+      const data = new Uint8Array(analyser.frequencyBinCount);
+      const barCount = 14;
+      const barWidth = 56 / barCount;
+
+      function frame() {
+        analyser.getByteFrequencyData(data);
+        ctx.clearRect(0, 0, 56, 32);
+        for (let i = 0; i < barCount; i++) {
+          const value = data[i + 2] || 0;
+          const h = Math.max(2, (value / 255) * 28);
+          ctx.fillStyle = 'rgba(201,165,116,0.9)';
+          const x = i * barWidth + 1;
+          ctx.fillRect(x, 32 - h, barWidth - 1.5, h);
+        }
+        rafId = requestAnimationFrame(frame);
+      }
+      frame();
+    }
+
+    function show(title, analyser, stopCallback) {
+      if (!bar) return;
+      titleEl.textContent = title;
+      onStop = stopCallback;
+      bar.hidden = false;
+      bar.classList.add('is-entering');
+      resizeCanvas();
+      cancelAnimationFrame(rafId);
+      draw(analyser);
+    }
+
+    function hide() {
+      if (!bar) return;
+      cancelAnimationFrame(rafId);
+      bar.hidden = true;
+      bar.classList.remove('is-entering');
+      onStop = null;
+    }
+
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => {
+        if (onStop) onStop();
+        hide();
+      });
+    }
+
+    return { show, hide };
   })();
 
   /* ------------------------------------------------------------------------
@@ -492,6 +589,9 @@
       const secs = String(totalSeconds % 60).padStart(2, '0');
       timerDisplay.textContent = `${mins}:${secs}`;
       MindfulTracker.addSecond();
+      if (totalSeconds > 0 && totalSeconds % 300 === 0) {
+        Toast.show(`${totalSeconds / 60} minutes of steady breathing. Keep going, or rest here.`);
+      }
 
       if (phaseSecondsLeft <= 0) {
         phaseIndex = (phaseIndex + 1) % phases.length;
@@ -620,11 +720,18 @@
           playBtn.setAttribute('aria-label', `Play ${def(card).title}`);
           if (activeController) activeController.stop();
           activeCard = null; activeController = null;
+          NowPlayingBar.hide();
         } else {
           card.classList.add('is-playing');
           playBtn.setAttribute('aria-label', `Pause ${def(card).title}`);
           activeController = AudioEngine.start(key, volume.value / 100);
           activeCard = card;
+          NowPlayingBar.show(def(card).title, activeController.analyser, () => {
+            card.classList.remove('is-playing');
+            playBtn.setAttribute('aria-label', `Play ${def(card).title}`);
+            if (activeController) activeController.stop();
+            activeCard = null; activeController = null;
+          });
         }
       });
 
@@ -793,6 +900,7 @@
       startBtn.disabled = false;
       pauseBtn.disabled = true;
       recordSession();
+      Toast.show('Session complete — nice work taking that time.');
       try { AudioEngine.playChime(); } catch (e) { /* audio unavailable */ }
     }
 
@@ -1158,6 +1266,103 @@
   }
 
   /* ------------------------------------------------------------------------
+     MODULE: Scrollspy — highlights the nav link for the section in view
+     ------------------------------------------------------------------------ */
+  function initScrollSpy() {
+    const links = document.querySelectorAll('.navbar__links a');
+    if (!links.length || !('IntersectionObserver' in window)) return;
+    const sections = Array.from(links)
+      .map((link) => document.getElementById(link.getAttribute('href').slice(1)))
+      .filter(Boolean);
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        links.forEach((link) => link.classList.toggle('is-active', link.getAttribute('href') === `#${entry.target.id}`));
+      });
+    }, { rootMargin: '-45% 0px -50% 0px', threshold: 0 });
+
+    sections.forEach((section) => observer.observe(section));
+  }
+
+  /* ------------------------------------------------------------------------
+     MODULE: Magnetic buttons — subtle cursor attraction on precision pointers
+     ------------------------------------------------------------------------ */
+  function initMagneticButtons() {
+    if (prefersReducedMotion || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    document.querySelectorAll('.magnetic').forEach((el) => {
+      el.addEventListener('mousemove', (e) => {
+        const rect = el.getBoundingClientRect();
+        const x = e.clientX - rect.left - rect.width / 2;
+        const y = e.clientY - rect.top - rect.height / 2;
+        el.style.transform = `translate(${x * 0.28}px, ${y * 0.28}px)`;
+      });
+      el.addEventListener('mouseleave', () => { el.style.transform = ''; });
+    });
+  }
+
+  /* ------------------------------------------------------------------------
+     MODULE: Hero floaters parallax — drifts gently as the page scrolls
+     ------------------------------------------------------------------------ */
+  function initHeroParallax() {
+    const floaters = document.querySelector('.hero__floaters');
+    if (!floaters || prefersReducedMotion) return;
+    window.addEventListener('scroll', () => {
+      const offset = Math.min(window.scrollY, 800);
+      floaters.style.transform = `translateY(${offset * 0.25}px)`;
+    }, { passive: true });
+  }
+
+  /* ------------------------------------------------------------------------
+     MODULE: Nature gallery lightbox
+     ------------------------------------------------------------------------ */
+  function initNatureLightbox() {
+    const lightbox = document.getElementById('lightbox');
+    const scene = document.getElementById('lightboxScene');
+    const caption = document.getElementById('lightboxCaption');
+    const closeBtn = document.getElementById('lightboxClose');
+    if (!lightbox) return;
+    let lastFocused = null;
+
+    function open(def, trigger) {
+      lastFocused = trigger;
+      scene.style.background = def.gradient;
+      caption.textContent = def.caption;
+      lightbox.hidden = false;
+      requestAnimationFrame(() => lightbox.classList.add('is-visible'));
+      closeBtn.focus();
+      document.addEventListener('keydown', onKeydown);
+    }
+
+    function close() {
+      lightbox.classList.remove('is-visible');
+      document.removeEventListener('keydown', onKeydown);
+      setTimeout(() => { lightbox.hidden = true; }, 300);
+      if (lastFocused) lastFocused.focus();
+    }
+
+    function onKeydown(e) { if (e.key === 'Escape') close(); }
+
+    closeBtn.addEventListener('click', close);
+    lightbox.addEventListener('click', (e) => { if (e.target === lightbox) close(); });
+
+    document.getElementById('natureGrid').addEventListener('click', (e) => {
+      const card = e.target.closest('.nature-card');
+      if (!card) return;
+      const def = NATURE_DEFS.find((d) => d.key === card.dataset.key);
+      if (def) open(def, card);
+    });
+    document.getElementById('natureGrid').addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      const card = e.target.closest('.nature-card');
+      if (!card) return;
+      e.preventDefault();
+      const def = NATURE_DEFS.find((d) => d.key === card.dataset.key);
+      if (def) open(def, card);
+    });
+  }
+
+  /* ------------------------------------------------------------------------
      INIT
      ------------------------------------------------------------------------ */
   document.addEventListener('DOMContentLoaded', () => {
@@ -1178,5 +1383,9 @@
     initScrollProgress();
     initCursorGlow();
     initScrollTop();
+    initScrollSpy();
+    initMagneticButtons();
+    initHeroParallax();
+    initNatureLightbox();
   });
 })();

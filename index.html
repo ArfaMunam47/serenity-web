@@ -70,12 +70,17 @@
     </div>
 
     <p class="eyebrow reveal">A quieter corner of the internet</p>
-    <h1 class="hero__title reveal">Take a<br><em>deep breath.</em></h1>
+    <h1 class="hero__title" aria-label="Take a deep breath.">
+      <span class="word-reveal" aria-hidden="true">
+        <span class="word" style="animation-delay:.05s">Take</span> <span class="word" style="animation-delay:.16s">a</span><br>
+        <em><span class="word" style="animation-delay:.32s">deep</span> <span class="word" style="animation-delay:.44s">breath.</span></em>
+      </span>
+    </h1>
     <p class="hero__subtitle reveal">Escape the noise. Relax your mind with peaceful sounds, gentle guidance, and mindful moments made just for slowing down.</p>
 
     <div class="hero__cta reveal">
-      <a href="#breathe" class="btn btn--primary">Start relaxing</a>
-      <a href="#sounds" class="btn btn--ghost">Explore sounds</a>
+      <a href="#breathe" class="btn btn--primary magnetic">Start relaxing</a>
+      <a href="#sounds" class="btn btn--ghost magnetic">Explore sounds</a>
     </div>
 
     <a class="hero__scroll-cue" href="#breathe" aria-label="Scroll to breathing exercise">
@@ -216,6 +221,17 @@
     </div>
   </section>
 
+  <!-- Nature gallery lightbox: opens on card click, Ken Burns slow zoom -->
+  <div class="lightbox" id="lightbox" hidden>
+    <div class="lightbox__panel">
+      <button class="lightbox__close" id="lightboxClose" aria-label="Close preview">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+      <div class="lightbox__scene" id="lightboxScene"></div>
+      <p class="lightbox__caption" id="lightboxCaption"></p>
+    </div>
+  </div>
+
   <!-- ============ MINI ZEN GARDEN ============ -->
   <section class="section zen" id="about" aria-labelledby="zenTitle">
     <p class="eyebrow reveal">A small sandbox</p>
@@ -234,6 +250,21 @@
   </section>
 
 </main>
+
+<!-- Persistent "now playing" bar with a live audio visualizer -->
+<div class="now-playing" id="nowPlaying" role="status" aria-live="off" hidden>
+  <canvas class="now-playing__viz" id="nowPlayingViz" aria-hidden="true"></canvas>
+  <div class="now-playing__info">
+    <span class="now-playing__eyebrow">Now playing</span>
+    <span class="now-playing__title" id="nowPlayingTitle">—</span>
+  </div>
+  <button class="now-playing__close" id="nowPlayingClose" aria-label="Stop playback">
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+  </button>
+</div>
+
+<!-- Gentle toast notifications -->
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <!-- Scroll-to-top -->
 <button class="scroll-top" id="scrollTopBtn" aria-label="Back to top">
