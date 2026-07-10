@@ -11,6 +11,36 @@
   const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
   const rand = (min, max) => min + Math.random() * (max - min);
 
+  /**
+   * Applies a subtle, premium 3D tilt to an element as the cursor moves
+   * across it — used across sound cards, mixer toggles, and nature scenes
+   * for a consistent sense of depth. No-ops under reduced motion or on
+   * touch devices, where the effect would just get in the way.
+   */
+  function attachTilt(el, { max = 8, scale = 1.02, glare = false } = {}) {
+    if (prefersReducedMotion || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    el.style.transformStyle = 'preserve-3d';
+    let glareEl = null;
+    if (glare) {
+      glareEl = document.createElement('span');
+      glareEl.className = 'tilt-glare';
+      el.appendChild(glareEl);
+    }
+    el.addEventListener('mousemove', (e) => {
+      const rect = el.getBoundingClientRect();
+      const px = (e.clientX - rect.left) / rect.width;
+      const py = (e.clientY - rect.top) / rect.height;
+      const rx = (0.5 - py) * max * 2;
+      const ry = (px - 0.5) * max * 2;
+      el.style.transform = `perspective(900px) rotateX(${rx.toFixed(2)}deg) rotateY(${ry.toFixed(2)}deg) scale(${scale})`;
+      if (glareEl) glareEl.style.background = `radial-gradient(circle at ${px * 100}% ${py * 100}%, rgba(255,255,255,0.35), transparent 60%)`;
+    });
+    el.addEventListener('mouseleave', () => {
+      el.style.transform = '';
+      if (glareEl) glareEl.style.background = 'transparent';
+    });
+  }
+
   /* ------------------------------------------------------------------------
      MODULE: Audio Engine
      Every sound in Serenity is synthesized live with the Web Audio API —
@@ -745,6 +775,8 @@
     function def(card) {
       return SOUND_DEFS.find((d) => d.key === card.dataset.key);
     }
+
+    grid.querySelectorAll('.sound-card').forEach((card) => attachTilt(card, { max: 5, scale: 1.015 }));
   }
 
   /* ------------------------------------------------------------------------
@@ -764,6 +796,8 @@
   function initMixer() {
     const grid = document.getElementById('mixerGrid');
     const masterSlider = document.getElementById('mixerMaster');
+    const tintWarm = document.getElementById('tintWarm');
+    const tintCool = document.getElementById('tintCool');
     const BASE_VOLUME = 0.45;
     const controllers = {};
     let master = (masterSlider ? Number(masterSlider.value) : 70) / 100;
@@ -776,7 +810,20 @@
       </button>
     `).join('');
 
+    // The atmosphere itself responds: warm sounds add an amber wash,
+    // cool/night sounds add a soft blue one — both fade in and out together.
+    const WARM_KEYS = ['fireplace'];
+    const COOL_KEYS = ['rain', 'water', 'thunder', 'crickets'];
+    function updateAmbientTint() {
+      const active = Object.keys(controllers);
+      const isWarm = active.some((k) => WARM_KEYS.includes(k));
+      const isCool = active.some((k) => COOL_KEYS.includes(k));
+      if (tintWarm) tintWarm.style.opacity = isWarm ? '1' : '0';
+      if (tintCool) tintCool.style.opacity = isCool ? '1' : '0';
+    }
+
     grid.querySelectorAll('.mixer__toggle').forEach((toggle) => {
+      attachTilt(toggle, { max: 6, scale: 1.03 });
       toggle.addEventListener('click', () => {
         const key = toggle.dataset.key;
         const isActive = toggle.classList.toggle('is-active');
@@ -788,6 +835,7 @@
           controllers[key].stop();
           delete controllers[key];
         }
+        updateAmbientTint();
       });
     });
 
@@ -1030,19 +1078,7 @@
       </figure>
     `).join('');
 
-    if (prefersReducedMotion) return;
-
-    grid.querySelectorAll('.nature-card').forEach((card) => {
-      card.addEventListener('mousemove', (e) => {
-        const rect = card.getBoundingClientRect();
-        const x = (e.clientX - rect.left) / rect.width - 0.5;
-        const y = (e.clientY - rect.top) / rect.height - 0.5;
-        card.style.transform = `perspective(800px) rotateX(${(-y * 8).toFixed(2)}deg) rotateY(${(x * 8).toFixed(2)}deg)`;
-      });
-      card.addEventListener('mouseleave', () => {
-        card.style.transform = '';
-      });
-    });
+    grid.querySelectorAll('.nature-card').forEach((card) => attachTilt(card, { max: 8, scale: 1.03, glare: true }));
   }
 
   /* ------------------------------------------------------------------------
@@ -1196,10 +1232,12 @@
     let width, height, particles;
 
     function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
       width = window.innerWidth;
       height = window.innerHeight;
-      canvas.width = width;
-      canvas.height = height;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       const count = Math.round((width * height) / 55000);
       particles = Array.from({ length: count }, () => ({
         x: rand(0, width),
@@ -1335,11 +1373,32 @@
      ------------------------------------------------------------------------ */
   function initHeroParallax() {
     const floaters = document.querySelector('.hero__floaters');
-    if (!floaters || prefersReducedMotion) return;
+    const hero = document.querySelector('.hero');
+    if (!floaters || !hero || prefersReducedMotion) return;
+
+    let scrollOffset = 0;
+    let mouseX = 0, mouseY = 0; // -1..1, relative to hero center
+
+    function render() {
+      const driftY = scrollOffset * 0.25 + mouseY * -14;
+      const driftX = mouseX * -18;
+      floaters.style.transform = `translate3d(${driftX}px, ${driftY}px, 0) rotate(${mouseX * 1.2}deg)`;
+    }
+
     window.addEventListener('scroll', () => {
-      const offset = Math.min(window.scrollY, 800);
-      floaters.style.transform = `translateY(${offset * 0.25}px)`;
+      scrollOffset = Math.min(window.scrollY, 800);
+      render();
     }, { passive: true });
+
+    if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+      hero.addEventListener('mousemove', (e) => {
+        const rect = hero.getBoundingClientRect();
+        mouseX = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
+        mouseY = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
+        render();
+      });
+      hero.addEventListener('mouseleave', () => { mouseX = 0; mouseY = 0; render(); });
+    }
   }
 
   /* ------------------------------------------------------------------------
@@ -1392,6 +1451,40 @@
   }
 
   /* ------------------------------------------------------------------------
+     MODULE: Keyboard shortcuts — quiet power-user affordances
+     ------------------------------------------------------------------------ */
+  function initKeyboardShortcuts() {
+    const isTypingContext = (el) => el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
+
+    document.addEventListener('keydown', (e) => {
+      if (e.metaKey || e.ctrlKey || e.altKey || isTypingContext(document.activeElement)) return;
+
+      switch (e.key) {
+        case 'b': {
+          document.getElementById('breathe').scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth' });
+          document.getElementById('breatheToggle').click();
+          break;
+        }
+        case 'f': {
+          const start = document.getElementById('focusStart');
+          const pause = document.getElementById('focusPause');
+          (start.disabled ? pause : start).click();
+          break;
+        }
+        case 't': {
+          document.getElementById('themeToggle').click();
+          break;
+        }
+        case '?': {
+          Toast.show('Shortcuts — B: breathe · F: focus timer · T: theme · Esc: close overlays', 4200);
+          break;
+        }
+        default: return;
+      }
+    });
+  }
+
+  /* ------------------------------------------------------------------------
      INIT
      ------------------------------------------------------------------------ */
   document.addEventListener('DOMContentLoaded', () => {
@@ -1416,5 +1509,6 @@
     initMagneticButtons();
     initHeroParallax();
     initNatureLightbox();
+    initKeyboardShortcuts();
   });
 })();
