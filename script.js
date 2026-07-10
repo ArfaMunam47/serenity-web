@@ -983,21 +983,50 @@
      MODULE: Nature gallery — generated scenes + mouse-driven parallax tilt
      ------------------------------------------------------------------------ */
   const NATURE_DEFS = [
-    { key: 'mountains', caption: 'Mountains', gradient: 'linear-gradient(180deg,#DCEEFF 0%,#B9CFE0 35%,#7D93A8 60%,#4E5F70 100%)' },
-    { key: 'ocean', caption: 'Ocean', gradient: 'linear-gradient(180deg,#E8F4F8 0%,#9FD0DE 40%,#3E7A8C 75%,#204F5C 100%)' },
-    { key: 'rain', caption: 'Rain', gradient: 'linear-gradient(180deg,#F1EEFF 0%,#C9C7E0 40%,#6E6C88 80%,#3E3D52 100%)' },
-    { key: 'forest', caption: 'Forest', gradient: 'linear-gradient(180deg,#F7F3EC 0%,#C7D8B8 35%,#6E8C5C 70%,#33452B 100%)' },
-    { key: 'sky', caption: 'Sky', gradient: 'linear-gradient(180deg,#FFFFFF 0%,#DCEEFF 35%,#9AC3E8 70%,#5C8FC2 100%)' },
-    { key: 'aurora', caption: 'Aurora', gradient: 'linear-gradient(180deg,#12141C 0%,#1F3A4A 30%,#2E6B5E 55%,#7FBF9E 75%,#F1EEFF 100%)' },
+    { key: 'mountains', caption: 'Mountains', sub: 'Alpine air, wide silence', gradient: 'linear-gradient(180deg,#DCEEFF 0%,#B9CFE0 35%,#7D93A8 60%,#4E5F70 100%)' },
+    { key: 'ocean', caption: 'Ocean', sub: 'Slow tide, endless horizon', gradient: 'linear-gradient(180deg,#E8F4F8 0%,#9FD0DE 40%,#3E7A8C 75%,#204F5C 100%)' },
+    { key: 'rain', caption: 'Rain', sub: 'A soft grey afternoon', gradient: 'linear-gradient(180deg,#F1EEFF 0%,#C9C7E0 40%,#6E6C88 80%,#3E3D52 100%)' },
+    { key: 'forest', caption: 'Forest', sub: 'Filtered light, quiet paths', gradient: 'linear-gradient(180deg,#F7F3EC 0%,#C7D8B8 35%,#6E8C5C 70%,#33452B 100%)' },
+    { key: 'sky', caption: 'Sky', sub: 'Nowhere to be, ever', gradient: 'linear-gradient(180deg,#FFFFFF 0%,#DCEEFF 35%,#9AC3E8 70%,#5C8FC2 100%)' },
+    { key: 'aurora', caption: 'Aurora', sub: 'Colour, moving slowly', gradient: 'linear-gradient(180deg,#12141C 0%,#1F3A4A 30%,#2E6B5E 55%,#7FBF9E 75%,#F1EEFF 100%)' },
   ];
+
+  /** Lightweight, CSS-only "illustration" layered into each scene — no image assets required. */
+  function natureDecor(key) {
+    switch (key) {
+      case 'mountains':
+        return '<div class="decor"><div class="decor-mountain decor-mountain--back"></div><div class="decor-mountain decor-mountain--front"></div><div class="decor-fog"></div></div>';
+      case 'ocean':
+        return '<div class="decor"><div class="decor-wave decor-wave--3"></div><div class="decor-wave decor-wave--1"></div><div class="decor-wave decor-wave--2"></div></div>';
+      case 'rain':
+        return '<div class="decor"><div class="decor-rain"></div><div class="decor-fog"></div></div>';
+      case 'forest':
+        return '<div class="decor"><div class="decor-tree decor-tree--1"></div><div class="decor-tree decor-tree--2"></div><div class="decor-tree decor-tree--3"></div><div class="decor-fog"></div></div>';
+      case 'sky':
+        return '<div class="decor"><div class="decor-sun"></div><div class="decor-cloud decor-cloud--1"></div><div class="decor-cloud decor-cloud--2"></div></div>';
+      case 'aurora':
+        return '<div class="decor"><div class="decor-stars"></div><div class="decor-ribbon decor-ribbon--1"></div><div class="decor-ribbon decor-ribbon--2"></div></div>';
+      default:
+        return '';
+    }
+  }
+
+  const VIEW_ICON = '<svg viewBox="0 0 24 24" fill="none"><path d="M4 12s3.5-6 8-6 8 6 8 6-3.5 6-8 6-8-6-8-6Z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="2.4" stroke="currentColor" stroke-width="1.6"/></svg>';
 
   function initNatureGallery() {
     const grid = document.getElementById('natureGrid');
     grid.innerHTML = NATURE_DEFS.map((def) => `
-      <figure class="nature-card" data-key="${def.key}" tabindex="0" aria-label="${def.caption}">
-        <div class="nature-card__scene" style="background:${def.gradient}"></div>
+      <figure class="nature-card" data-key="${def.key}" tabindex="0" aria-label="${def.caption} — press to view full scene">
+        <div class="nature-card__scene" style="background:${def.gradient}">
+          ${natureDecor(def.key)}
+          <div class="nature-card__grain"></div>
+        </div>
         <div class="nature-card__scrim"></div>
-        <figcaption class="nature-card__caption">${def.caption}</figcaption>
+        <div class="nature-card__view">${VIEW_ICON}<span>View</span></div>
+        <figcaption class="nature-card__caption">
+          <span class="nature-card__title">${def.caption}</span>
+          <span class="nature-card__sub">${def.sub}</span>
+        </figcaption>
       </figure>
     `).join('');
 

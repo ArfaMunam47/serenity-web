@@ -601,15 +601,16 @@ body{
 .mixer__grid{
   display: flex;
   flex-wrap: wrap;
-  justify-content: center; /* odd item counts stay centered, never lopsided */
-  gap: 16px;
+  justify-content: center; /* each wrapped line centers on its own */
+  gap: 18px;
+  max-width: 900px; /* forces a clean 4-then-3 split instead of 6-then-1 */
+  margin: 0 auto;
 }
 
 .mixer__toggle{
   display: flex; flex-direction: column; align-items: center; gap: 14px;
   padding: 26px 16px;
-  flex: 1 1 170px;
-  max-width: 200px;
+  flex: 0 1 200px;
   border-radius: var(--r-md);
   background: var(--surface-solid);
   border: 1px solid var(--line);
@@ -730,34 +731,160 @@ body{
 
 .nature-card{
   position: relative;
-  height: 340px;
+  height: 360px;
   border-radius: var(--r-lg);
   overflow: hidden;
   box-shadow: var(--shadow-sm);
   perspective: 800px;
+  cursor: pointer;
   transition: box-shadow var(--dur-med) var(--ease-out);
 }
-.nature-card:hover{ box-shadow: var(--shadow-lg); }
+.nature-card:hover, .nature-card:focus-visible{ box-shadow: var(--shadow-lg); }
 
 .nature-card__scene{
   position: absolute; inset: 0;
-  transition: transform 0.5s var(--ease-out);
+  transition: transform 0.6s var(--ease-out);
   will-change: transform;
+  overflow: hidden;
 }
-.nature-card:hover .nature-card__scene{ transform: scale(1.08); }
+.nature-card:hover .nature-card__scene{ transform: scale(1.1); }
+
+/* Fine grain over every scene — the difference between "gradient" and "art" */
+.nature-card__grain{
+  position: absolute; inset: 0;
+  background-image: radial-gradient(rgba(0,0,0,0.55) 1px, transparent 1px);
+  background-size: 3px 3px;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
 
 .nature-card__scrim{
-  position: absolute; inset: 0;
-  background: linear-gradient(0deg, rgba(0,0,0,0.45), transparent 55%);
+  position: absolute; inset: 0; z-index: 1;
+  background: linear-gradient(0deg, rgba(0,0,0,0.5), transparent 60%);
+  pointer-events: none;
 }
 
 .nature-card__caption{
-  position: absolute; left: 22px; bottom: 20px; z-index: 2;
-  color: #fff; font-family: var(--font-display); font-size: 1.2rem;
-  transform: translateY(8px); opacity: 0.85;
+  position: absolute; left: 24px; bottom: 20px; z-index: 2;
+  display: flex; flex-direction: column;
+  color: #fff;
+  transform: translateY(8px); opacity: 0.9;
   transition: transform var(--dur-fast) var(--ease-out);
 }
-.nature-card:hover .nature-card__caption{ transform: translateY(0); opacity: 1; }
+.nature-card:hover .nature-card__caption, .nature-card:focus-visible .nature-card__caption{ transform: translateY(0); opacity: 1; }
+.nature-card__title{ font-family: var(--font-display); font-size: 1.25rem; }
+.nature-card__sub{ font-size: 0.78rem; color: rgba(255,255,255,0.78); margin-top: 3px; }
+
+/* "View" affordance — makes the click target unmistakable */
+.nature-card__view{
+  position: absolute; top: 50%; left: 50%; z-index: 2;
+  transform: translate(-50%, -50%) scale(0.88);
+  display: flex; align-items: center; gap: 8px;
+  padding: 11px 22px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.14);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.35);
+  color: #fff;
+  font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase;
+  opacity: 0; pointer-events: none;
+  transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+.nature-card__view svg{ width: 14px; height: 14px; }
+.nature-card:hover .nature-card__view, .nature-card:focus-visible .nature-card__view{
+  opacity: 1; transform: translate(-50%, -50%) scale(1);
+}
+
+/* ---- Per-scene decoration: lightweight CSS "illustrations", no images ---- */
+.decor{ position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+
+.decor-fog{
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, transparent 45%, rgba(255,255,255,0.28));
+  animation: fogDrift 13s ease-in-out infinite alternate;
+}
+@keyframes fogDrift{ from{ transform: translateX(-4%); } to{ transform: translateX(4%); } }
+
+.decor-mountain{
+  position: absolute; bottom: -2%; left: -5%; right: -5%; height: 46%;
+  background: rgba(20,30,42,0.55);
+}
+.decor-mountain--back{
+  height: 58%; background: rgba(30,45,58,0.4);
+  clip-path: polygon(0% 100%, 0% 55%, 18% 30%, 34% 48%, 50% 20%, 68% 46%, 84% 26%, 100% 50%, 100% 100%);
+}
+.decor-mountain--front{
+  clip-path: polygon(0% 100%, 0% 62%, 22% 34%, 40% 58%, 58% 26%, 76% 54%, 100% 32%, 100% 100%);
+}
+
+.decor-wave{
+  position: absolute; left: -10%; right: -10%; height: 16px; border-radius: 50%;
+  background: rgba(255,255,255,0.4); filter: blur(1.5px);
+  animation: waveMove 6s ease-in-out infinite;
+}
+.decor-wave--1{ bottom: 32%; animation-delay: 0s; }
+.decor-wave--2{ bottom: 20%; opacity: 0.6; animation-delay: -3s; }
+.decor-wave--3{ bottom: 44%; opacity: 0.4; animation-delay: -1.5s; }
+@keyframes waveMove{ 0%, 100%{ transform: translateX(0) scaleX(1); } 50%{ transform: translateX(3%) scaleX(1.06); } }
+
+.decor-rain{
+  position: absolute; inset: -20% -20%;
+  background-image: repeating-linear-gradient(112deg, rgba(255,255,255,0.4) 0 2px, transparent 2px 26px);
+  opacity: 0.5;
+  animation: rainFall 0.7s linear infinite;
+}
+@keyframes rainFall{ from{ background-position: 0 0; } to{ background-position: -30px 60px; } }
+
+.decor-tree{
+  position: absolute; bottom: 0; width: 0; height: 0;
+  border-left: 24px solid transparent; border-right: 24px solid transparent;
+  border-bottom: 64px solid rgba(20,38,20,0.5);
+}
+.decor-tree--1{ left: 12%; transform: scale(0.8); }
+.decor-tree--2{ left: 42%; transform: scale(1.15); border-bottom-color: rgba(16,32,16,0.55); }
+.decor-tree--3{ left: 70%; transform: scale(0.9); }
+
+.decor-sun{
+  position: absolute; top: 15%; right: 16%; width: 48px; height: 48px; border-radius: 50%;
+  background: radial-gradient(circle, #fff, rgba(255,255,255,0.15) 70%);
+  box-shadow: 0 0 46px rgba(255,255,255,0.65);
+}
+.decor-cloud{
+  position: absolute; background: rgba(255,255,255,0.6); border-radius: 50%; filter: blur(4px);
+  animation: cloudDrift 20s linear infinite;
+}
+.decor-cloud--1{ width: 100px; height: 34px; top: 24%; left: 8%; }
+.decor-cloud--2{ width: 64px; height: 24px; top: 42%; left: 55%; animation-delay: -8s; }
+@keyframes cloudDrift{ from{ transform: translateX(0); } to{ transform: translateX(36px); } }
+
+.decor-ribbon{
+  position: absolute; left: -10%; right: -10%; height: 42%;
+  background: linear-gradient(90deg, transparent, rgba(127,191,158,0.55), transparent);
+  filter: blur(12px);
+  animation: ribbonMove 11s ease-in-out infinite;
+}
+.decor-ribbon--1{ top: 16%; }
+.decor-ribbon--2{ top: 40%; opacity: 0.6; animation-delay: -5s; background: linear-gradient(90deg, transparent, rgba(201,165,116,0.4), transparent); }
+@keyframes ribbonMove{ 0%, 100%{ transform: translateX(-4%) scaleY(1); } 50%{ transform: translateX(4%) scaleY(1.2); } }
+
+.decor-stars{
+  position: absolute; inset: 0;
+  background-image:
+    radial-gradient(1.5px 1.5px at 20% 28%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 62% 14%, #fff, transparent),
+    radial-gradient(1px 1px at 80% 38%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 36% 54%, #fff, transparent),
+    radial-gradient(1px 1px at 92% 22%, #fff, transparent),
+    radial-gradient(1px 1px at 8% 62%, #fff, transparent);
+  animation: twinkle 3.2s ease-in-out infinite alternate;
+}
+@keyframes twinkle{ from{ opacity: 0.45; } to{ opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce){
+  .decor-fog, .decor-wave, .decor-rain, .decor-cloud, .decor-ribbon, .decor-stars{ animation: none; }
+}
 
 /* -------------------------------------------------------------------------
    14. ZEN GARDEN
@@ -1022,7 +1149,6 @@ body{
 }
 .lightbox__close:hover{ background: rgba(20,18,14,0.65); transform: rotate(90deg); }
 .lightbox__close svg{ width: 16px; height: 16px; }
-.nature-card{ cursor: pointer; }
 
 @media (prefers-reduced-motion: reduce){
   .lightbox__scene{ animation: none; }
